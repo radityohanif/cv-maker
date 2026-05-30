@@ -71,12 +71,6 @@ function Index() {
     [data],
   );
 
-  const percent = Math.round(
-    (Object.entries(completion).filter(([k, v]) => k !== "review" && v).length /
-      (sectionIds.length - 1)) *
-      100,
-  );
-
   const warnings = useMemo(() => getValidationWarnings(data), [data]);
 
   const checklist = [
@@ -123,15 +117,14 @@ function Index() {
     );
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
+    <div className="flex h-screen overflow-hidden bg-background text-foreground">
       <StepSidebar
         active={active}
         onChange={setActive}
         completion={completion}
-        percent={percent}
       />
 
-      <main className="flex min-w-0 flex-1 flex-col">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <TopBar
           saveStatus={saveStatus}
           lastSaved={lastSaved}

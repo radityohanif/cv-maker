@@ -16,10 +16,9 @@ interface Props {
   active: SectionId;
   onChange: (id: SectionId) => void;
   completion: Record<SectionId, boolean>;
-  percent: number;
 }
 
-export function StepSidebar({ active, onChange, completion, percent }: Props) {
+export function StepSidebar({ active, onChange, completion }: Props) {
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
@@ -35,7 +34,7 @@ export function StepSidebar({ active, onChange, completion, percent }: Props) {
     <TooltipProvider delayDuration={collapsed ? 200 : 1000}>
       <aside
         className={cn(
-          "relative hidden shrink-0 flex-col border-r border-border bg-surface transition-[width] duration-300 ease-in-out lg:flex",
+          "relative hidden h-screen shrink-0 flex-col border-r border-border bg-surface transition-[width] duration-300 ease-in-out lg:sticky lg:top-0 lg:flex",
           collapsed ? "w-17" : "w-72",
         )}
       >
@@ -61,36 +60,6 @@ export function StepSidebar({ active, onChange, completion, percent }: Props) {
               </div>
             )}
           </div>
-
-          {collapsed ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex flex-col items-center gap-1 rounded-xl border border-border bg-card p-2">
-                  <span className="text-[10px] font-semibold text-primary">{percent}%</span>
-                  <div className="h-12 w-1.5 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="w-full rounded-full bg-primary transition-all"
-                      style={{ height: `${percent}%` }}
-                    />
-                  </div>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="right">Completion {percent}%</TooltipContent>
-            </Tooltip>
-          ) : (
-            <div className="rounded-xl border border-border bg-card p-3">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-medium text-foreground">Completion</span>
-                <span className="font-semibold text-primary">{percent}%</span>
-              </div>
-              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-primary transition-all"
-                  style={{ width: `${percent}%` }}
-                />
-              </div>
-            </div>
-          )}
 
           <nav className="flex flex-col gap-1 overflow-y-auto">
             {sectionIds.map((id, i) => {
