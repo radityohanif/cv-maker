@@ -208,6 +208,53 @@
     ],
     "projects": [
       {
+        "projectName": "SIPGN SIPHR – BGN HR System",
+        "category": "Government HR",
+        "description": "Unified HR platform for BGN: workforce, attendance, leave, documents with e-signature, finance, LMS, and assets. Complex multi-platform data integration and IoT-based attendance.",
+        "technologies": [
+          "Go",
+          "Next.js",
+          "SQL",
+          "Kafka"
+        ]
+      },
+      {
+        "projectName": "ASDP PIDS – Passenger Information Display",
+        "category": "Transport / Digital Signage",
+        "description": "Centralized ferry port display system for real-time ship, dock, and service status. Admin dashboard, operator workflows, running text/media content, BMKG weather API, and read-only Open API.",
+        "technologies": [
+          "Go",
+          "Next.js",
+          "SQL",
+          "REST API"
+        ]
+      },
+      {
+        "projectName": "POC SIPGN SIPAI – AI Surveillance (SPPG Kitchens)",
+        "category": "AI Surveillance / PoC",
+        "description": "Integrated AI surveillance for SPPG kitchens: CCTV management, YOLO-based PPE compliance detection, violation counting, and compliance dashboard.",
+        "technologies": [
+          "Next.js",
+          "Go",
+          "Python",
+          "YOLO",
+          "FastAPI"
+        ]
+      },
+      {
+        "projectName": "POC G24 AI Surveillance Platform",
+        "category": "AI Surveillance / PoC",
+        "description": "Enterprise AI layer on existing CCTV: real-time PPE/safety detection, alert workflow, live monitoring, compliance analytics, and multi-site governance console.",
+        "technologies": [
+          "Next.js",
+          "Go",
+          "Python",
+          "YOLO",
+          "PostgreSQL",
+          "FastAPI"
+        ]
+      },
+      {
         "projectName": "Cognitiev – SaaS AI Platform",
         "category": "AI SaaS / LLM Integration",
         "description": "Built backend services integrating OpenAI APIs for niche AI features embedded in daily-use applications—demonstrating production LLM integration patterns.",
@@ -416,6 +463,10 @@
         "Vue JS",
         "Node JS",
         "Go",
+        "Next.js",
+        "Kafka",
+        "PostgreSQL",
+        "FastAPI",
         "DevOps",
         "SQL",
         "ExpressJS",
@@ -445,6 +496,9 @@
         "NLP & Sentiment Analysis",
         "Conversational AI & Chatbots",
         "LLM-Powered Applications",
+        "AI Surveillance & CCTV Analytics",
+        "Government HR Systems",
+        "Passenger Information Systems",
         "Data Analytics & Dashboards",
         "Enterprise Software",
         "Government Systems",
