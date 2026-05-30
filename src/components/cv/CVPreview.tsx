@@ -10,14 +10,18 @@ function PageBlock({
   children: React.ReactNode;
 }) {
   if (!forExport) return <>{children}</>;
-  return <div data-page-block="">{children}</div>;
+  return (
+    <div data-page-block="" style={{ width: "100%" }}>
+      {children}
+    </div>
+  );
 }
 
 function SectionHeader({ title }: { title: string }) {
   return (
     <div className="mt-6 mb-3">
       <h2 className="text-[10.5px] font-bold tracking-[0.18em] text-black uppercase">{title}</h2>
-      <div className="mt-1.5 mb-2 h-px w-full bg-black" />
+      <div className="mt-1.5 mb-2 h-px w-full bg-black" style={{ width: "100%" }} />
     </div>
   );
 }
@@ -34,7 +38,7 @@ function EntryHeader({
   subRight?: string;
 }) {
   return (
-    <div>
+    <div style={{ width: "100%" }}>
       <div className="flex items-baseline justify-between gap-3">
         <span className="text-[11.5px] font-semibold text-black">{left}</span>
         {right && <span className="shrink-0 text-[10.5px] text-black">{right}</span>}
@@ -57,10 +61,8 @@ function Bullets({ items, forExport = false }: { items: string[]; forExport?: bo
     return (
       <>
         {filtered.map((b, i) => (
-          <div key={i} data-page-block="">
-            <ul className="mt-1 list-disc pl-4 marker:text-black">
-              <li className="text-[11px] leading-snug text-black">{b}</li>
-            </ul>
+          <div key={i} data-page-block="" style={{ width: "100%" }}>
+            <BulletLine text={b} />
           </div>
         ))}
       </>
@@ -68,13 +70,26 @@ function Bullets({ items, forExport = false }: { items: string[]; forExport?: bo
   }
 
   return (
-    <ul className="mt-1 list-disc pl-4 marker:text-black">
+    <div className="mt-1 space-y-1">
       {filtered.map((b, i) => (
-        <li key={i} className="text-[11px] leading-snug text-black">
-          {b}
-        </li>
+        <BulletLine key={i} text={b} />
       ))}
-    </ul>
+    </div>
+  );
+}
+
+function BulletLine({ text }: { text: string }) {
+  return (
+    <div className="flex items-start gap-2" style={{ width: "100%" }}>
+      <span
+        className="shrink-0 text-[11px] leading-snug text-black"
+        style={{ width: "0.75em", textAlign: "center" }}
+        aria-hidden
+      >
+        •
+      </span>
+      <span className="min-w-0 flex-1 text-[11px] leading-snug text-black">{text}</span>
+    </div>
   );
 }
 
@@ -104,7 +119,7 @@ export const CVPreview = forwardRef<
       style={{
         width: "210mm",
         minHeight: forExport ? undefined : "297mm",
-        padding: "14mm 16mm",
+        padding: "16mm 20mm",
         fontFamily: "Inter, Arial, Helvetica, ui-sans-serif, system-ui, sans-serif",
         transform: forExport ? undefined : `scale(${scale})`,
       }}
