@@ -1,5 +1,6 @@
-import { Check } from "lucide-react";
+import { Check, FileJson } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { sectionIds, sectionMeta, type SectionId } from "@/data/sampleCV";
 
 interface Props {
@@ -7,9 +8,10 @@ interface Props {
   onChange: (id: SectionId) => void;
   completion: Record<SectionId, boolean>;
   percent: number;
+  onImportJson?: () => void;
 }
 
-export function StepSidebar({ active, onChange, completion, percent }: Props) {
+export function StepSidebar({ active, onChange, completion, percent, onImportJson }: Props) {
   return (
     <aside className="hidden lg:flex w-72 shrink-0 flex-col gap-4 border-r border-border bg-surface p-5">
       <div className="flex items-center gap-2">
@@ -71,9 +73,22 @@ export function StepSidebar({ active, onChange, completion, percent }: Props) {
         })}
       </nav>
 
-      <div className="mt-auto rounded-xl border border-dashed border-border bg-card/60 p-3 text-[11px] text-muted-foreground">
-        <p className="font-medium text-foreground">No login required</p>
-        <p className="mt-0.5">Your draft is saved locally in this browser.</p>
+      <div className="mt-auto space-y-2">
+        {onImportJson && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full justify-start gap-2"
+            onClick={onImportJson}
+          >
+            <FileJson className="h-4 w-4" />
+            Import JSON
+          </Button>
+        )}
+        <div className="rounded-xl border border-dashed border-border bg-card/60 p-3 text-[11px] text-muted-foreground">
+          <p className="font-medium text-foreground">No login required</p>
+          <p className="mt-0.5">Your draft is saved locally in this browser.</p>
+        </div>
       </div>
     </aside>
   );

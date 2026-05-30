@@ -2,6 +2,7 @@ import { Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LocalStorageStatus } from "./LocalStorageStatus";
 import { ExportActions } from "./ExportActions";
+import { ImportJsonButton } from "./json-import/ImportJsonButton";
 import type { SaveStatus } from "@/hooks/useCVStorage";
 
 export function TopBar({
@@ -11,6 +12,7 @@ export function TopBar({
   getExportElement,
   onReset,
   onPreview,
+  onImportJson,
 }: {
   saveStatus: SaveStatus;
   lastSaved: Date | null;
@@ -18,6 +20,7 @@ export function TopBar({
   getExportElement: () => HTMLElement | null;
   onReset: () => void;
   onPreview?: () => void;
+  onImportJson?: () => void;
 }) {
   return (
     <header className="sticky top-0 z-30 flex flex-wrap items-center gap-3 border-b border-border bg-background/85 px-4 py-3 backdrop-blur lg:px-6">
@@ -45,6 +48,7 @@ export function TopBar({
             Preview
           </Button>
         )}
+        {onImportJson && <ImportJsonButton onClick={onImportJson} />}
         <ExportActions getExportElement={getExportElement} fullName={fullName} onReset={onReset} />
       </div>
     </header>

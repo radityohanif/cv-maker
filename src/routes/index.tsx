@@ -8,6 +8,7 @@ import { PreviewPanel } from "@/components/cv/PreviewPanel";
 import { ChecklistCard } from "@/components/cv/ChecklistCard";
 import { CVPreview } from "@/components/cv/CVPreview";
 import { ValidationBanner } from "@/components/cv/LocalStorageStatus";
+import { JsonImportModal } from "@/components/cv/json-import/JsonImportModal";
 import {
   PersonalInfoForm,
   SummaryForm,
@@ -16,10 +17,12 @@ import {
   ProjectsForm,
   ActivitiesForm,
   SkillsForm,
+  ImportForm,
   ReviewForm,
 } from "@/components/cv/forms/Forms";
 import { useCVStorage } from "@/hooks/useCVStorage";
 import { getValidationWarnings } from "@/lib/validation";
+import { hasExistingDraft } from "@/lib/jsonImport";
 import { sectionIds, type SectionId } from "@/data/sampleCV";
 
 export const Route = createFileRoute("/")({
@@ -45,9 +48,16 @@ function Index() {
   const { data, setData, saveStatus, lastSaved, resetData } = useCVStorage();
   const [active, setActive] = useState<SectionId>("personal");
   const [mobileTab, setMobileTab] = useState<"edit" | "preview">("edit");
+  const [importOpen, setImportOpen] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
 
   const getExportElement = () => exportRef.current;
+  const openImport = () => setImportOpen(true);
+
+  const handleImportApply = (imported: typeof data) => {
+    setData(imported);
+    setImportOpen(false);
+  };
 
   const completion = useMemo<Record<SectionId, boolean>>(
     () => ({
@@ -58,6 +68,7 @@ function Index() {
       projects: data.projects.length > 0,
       activities: data.activities.length > 0,
       skills: !!data.additional.technicalSkills.trim(),
+      import: hasExistingDraft(data),
       review: false,
     }),
     [data],
@@ -86,22 +97,24 @@ function Index() {
   const prev = () => idx > 0 && setActive(sectionIds[idx - 1]);
   const next = () => idx < sectionIds.length - 1 && setActive(sectionIds[idx + 1]);
 
-  const formProps = { data, setData };
+  const formProps = { data, setData, onOpenImport: openImport };
   const formNode =
     active === "personal" ? (
       <PersonalInfoForm {...formProps} />
     ) : active === "summary" ? (
-      <SummaryForm {...formProps} />
+      <SummaryForm data={data} setData={setData} />
     ) : active === "education" ? (
-      <EducationForm {...formProps} />
+      <EducationForm data={data} setData={setData} />
     ) : active === "experience" ? (
-      <ExperienceForm {...formProps} />
+      <ExperienceForm data={data} setData={setData} />
     ) : active === "projects" ? (
-      <ProjectsForm {...formProps} />
+      <ProjectsForm data={data} setData={setData} />
     ) : active === "activities" ? (
-      <ActivitiesForm {...formProps} />
+      <ActivitiesForm data={data} setData={setData} />
     ) : active === "skills" ? (
-      <SkillsForm {...formProps} />
+      <SkillsForm data={data} setData={setData} />
+    ) : active === "import" ? (
+      <ImportForm data={data} setData={setData} />
     ) : (
       <ReviewForm
         data={data}
@@ -110,12 +123,19 @@ function Index() {
         onJump={() => setActive("personal")}
         getExportElement={getExportElement}
         onReset={resetData}
+        onImportJson={openImport}
       />
     );
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
-      <StepSidebar active={active} onChange={setActive} completion={completion} percent={percent} />
+      <StepSidebar
+        active={active}
+        onChange={setActive}
+        completion={completion}
+        percent={percent}
+        onImportJson={openImport}
+      />
 
       <main className="flex min-w-0 flex-1 flex-col">
         <TopBar
@@ -125,6 +145,7 @@ function Index() {
           getExportElement={getExportElement}
           onReset={resetData}
           onPreview={() => setMobileTab("preview")}
+          onImportJson={openImport}
         />
 
         <div className="flex items-center justify-center gap-1 border-b border-border bg-card/60 p-2 lg:hidden">
@@ -210,6 +231,13 @@ function Index() {
       <div className="pointer-events-none fixed left-[-9999px] top-0" aria-hidden ref={exportRef}>
         <CVPreview data={data} forExport />
       </div>
+
+      <JsonImportModal
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        currentData={data}
+        onApply={handleImportApply}
+      />
     </div>
   );
 }

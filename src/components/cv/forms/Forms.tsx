@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,15 +9,17 @@ import { BulletEditor } from "../BulletEditor";
 import { ChecklistCard } from "../ChecklistCard";
 import { ExportActions } from "../ExportActions";
 import { ValidationBanner } from "../LocalStorageStatus";
+import { ImportJsonButton } from "../json-import/ImportJsonButton";
+import { JsonImportFlow } from "../json-import/JsonImportFlow";
 import type { CVData } from "@/data/sampleCV";
 import { newId, sectionMeta } from "@/data/sampleCV";
 import type { ValidationWarning } from "@/lib/validation";
 
-type Props = { data: CVData; setData: (d: CVData) => void };
+type Props = { data: CVData; setData: (d: CVData) => void; onOpenImport?: () => void };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export function PersonalInfoForm({ data, setData }: Props) {
+export function PersonalInfoForm({ data, setData, onOpenImport }: Props) {
   const p = data.personal;
   const set = (k: keyof typeof p, v: string) => setData({ ...data, personal: { ...p, [k]: v } });
   const m = sectionMeta.personal;
@@ -27,6 +29,18 @@ export function PersonalInfoForm({ data, setData }: Props) {
 
   return (
     <SectionCard title={m.label} description={m.description} hint={m.hint}>
+      {!p.fullName.trim() && onOpenImport && (
+        <div className="mb-4 flex flex-col items-center gap-3 rounded-xl border border-dashed border-primary/30 bg-primary/5 px-4 py-6 text-center">
+          <Sparkles className="h-5 w-5 text-primary" />
+          <div>
+            <p className="text-sm font-medium text-foreground">Start faster with JSON</p>
+            <p className="mt-0.5 text-[12px] text-muted-foreground">
+              Paste structured CV data from LinkedIn, a portfolio, or AI output.
+            </p>
+          </div>
+          <ImportJsonButton onClick={onOpenImport} variant="default" />
+        </div>
+      )}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Full name" required>
           <Input
@@ -627,6 +641,15 @@ export function SkillsForm({ data, setData }: Props) {
   );
 }
 
+export function ImportForm({ data, setData }: { data: CVData; setData: (d: CVData) => void }) {
+  const m = sectionMeta.import;
+  return (
+    <SectionCard title={m.label} description={m.description} hint={m.hint}>
+      <JsonImportFlow embedded currentData={data} onApply={setData} />
+    </SectionCard>
+  );
+}
+
 export function ReviewForm({
   data,
   checklist,
@@ -634,6 +657,7 @@ export function ReviewForm({
   onJump,
   getExportElement,
   onReset,
+  onImportJson,
 }: {
   data: CVData;
   checklist: { label: string; done: boolean }[];
@@ -641,11 +665,23 @@ export function ReviewForm({
   onJump: () => void;
   getExportElement: () => HTMLElement | null;
   onReset: () => void;
+  onImportJson?: () => void;
 }) {
   const m = sectionMeta.review;
   return (
     <SectionCard title={m.label} description={m.description} hint={m.hint}>
       <ValidationBanner warnings={warnings} />
+      {onImportJson && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3">
+          <div>
+            <p className="text-sm font-medium text-foreground">Have structured CV data?</p>
+            <p className="text-[12px] text-muted-foreground">
+              Import JSON to update your draft before exporting.
+            </p>
+          </div>
+          <ImportJsonButton onClick={onImportJson} />
+        </div>
+      )}
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <ChecklistCard items={checklist} />
         <div className="rounded-2xl border border-border bg-card p-4 shadow-[var(--shadow-soft)]">
