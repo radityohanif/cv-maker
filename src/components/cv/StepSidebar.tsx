@@ -45,9 +45,7 @@ export function StepSidebar({ active, onChange, completion, percent }: Props) {
               onClick={() => onChange(id)}
               className={cn(
                 "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-all",
-                isActive
-                  ? "bg-primary/10 text-primary"
-                  : "text-foreground hover:bg-muted",
+                isActive ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted",
               )}
             >
               <span
@@ -63,9 +61,7 @@ export function StepSidebar({ active, onChange, completion, percent }: Props) {
                 {done ? <Check className="h-3.5 w-3.5" /> : i + 1}
               </span>
               <span className="flex-1">
-                <span className="block text-sm font-medium">
-                  {sectionMeta[id].label}
-                </span>
+                <span className="block text-sm font-medium">{sectionMeta[id].label}</span>
                 <span className="block text-[11px] text-muted-foreground line-clamp-1">
                   {sectionMeta[id].description}
                 </span>

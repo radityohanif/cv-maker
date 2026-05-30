@@ -1,13 +1,11 @@
-import type { CVData, DateRange } from "@/data/sampleCV";
-
-const fmt = (r: DateRange) => `${r.start} – ${r.current ? "Present" : r.end}`;
+import { forwardRef } from "react";
+import type { CVData } from "@/data/sampleCV";
+import { formatDateRange } from "@/data/sampleCV";
 
 function SectionHeader({ title }: { title: string }) {
   return (
     <div className="mt-4 mb-1.5">
-      <h2 className="text-[10.5px] font-bold tracking-[0.18em] text-black uppercase">
-        {title}
-      </h2>
+      <h2 className="text-[10.5px] font-bold tracking-[0.18em] text-black uppercase">{title}</h2>
       <div className="mt-0.5 h-px w-full bg-black" />
     </div>
   );
@@ -20,7 +18,7 @@ function EntryHeader({
   subRight,
 }: {
   left: string;
-  right: string;
+  right?: string;
   subLeft?: string;
   subRight?: string;
 }) {
@@ -28,12 +26,12 @@ function EntryHeader({
     <div>
       <div className="flex items-baseline justify-between gap-3">
         <span className="text-[11.5px] font-semibold text-black">{left}</span>
-        <span className="text-[10.5px] text-black">{right}</span>
+        {right && <span className="shrink-0 text-[10.5px] text-black">{right}</span>}
       </div>
       {(subLeft || subRight) && (
         <div className="flex items-baseline justify-between gap-3">
-          <span className="text-[11px] italic text-black">{subLeft}</span>
-          <span className="text-[10.5px] italic text-black">{subRight}</span>
+          {subLeft && <span className="text-[11px] italic text-black">{subLeft}</span>}
+          {subRight && <span className="shrink-0 text-[10.5px] italic text-black">{subRight}</span>}
         </div>
       )}
     </div>
@@ -41,10 +39,11 @@ function EntryHeader({
 }
 
 function Bullets({ items }: { items: string[] }) {
-  if (!items.length) return null;
+  const filtered = items.filter((b) => b.trim());
+  if (!filtered.length) return null;
   return (
     <ul className="mt-1 list-disc pl-4 marker:text-black">
-      {items.map((b, i) => (
+      {filtered.map((b, i) => (
         <li key={i} className="text-[11px] leading-snug text-black">
           {b}
         </li>
@@ -53,35 +52,48 @@ function Bullets({ items }: { items: string[] }) {
   );
 }
 
-export function CVPreview({ data, scale = 1 }: { data: CVData; scale?: number }) {
+function TextLine({ children }: { children: string }) {
+  if (!children.trim()) return null;
+  return <p className="mt-0.5 text-[11px] leading-snug text-black">{children}</p>;
+}
+
+export const CVPreview = forwardRef<
+  HTMLDivElement,
+  { data: CVData; scale?: number; forExport?: boolean }
+>(function CVPreview({ data, scale = 1, forExport = false }, ref) {
   const p = data.personal;
-  const contact = [p.email, p.phone, p.location, p.links]
-    .filter(Boolean)
-    .join("  ·  ");
+  const contactParts = [p.email, p.phone, p.location, p.linkedin, p.portfolio, p.website].filter(
+    Boolean,
+  );
 
   return (
     <div
-      className="origin-top mx-auto bg-white text-black shadow-[0_4px_30px_rgba(15,23,42,0.12)] ring-1 ring-black/5"
+      ref={ref}
+      id="cv-preview-document"
+      className={
+        forExport
+          ? "bg-white text-black"
+          : "origin-top mx-auto bg-white text-black shadow-[0_4px_30px_rgba(15,23,42,0.12)] ring-1 ring-black/5"
+      }
       style={{
         width: "210mm",
-        minHeight: "297mm",
+        minHeight: forExport ? undefined : "297mm",
         padding: "14mm 16mm",
-        fontFamily:
-          '"Times New Roman", "Liberation Serif", Georgia, serif',
-        transform: `scale(${scale})`,
+        fontFamily: "Inter, Arial, Helvetica, ui-sans-serif, system-ui, sans-serif",
+        transform: forExport ? undefined : `scale(${scale})`,
       }}
     >
       <header className="text-center">
         <h1 className="text-[22px] font-bold tracking-wide text-black">
-          {p.fullName}
+          {p.fullName || "Your Name"}
         </h1>
-        {p.title && (
-          <p className="mt-0.5 text-[11px] text-black">{p.title}</p>
+        {p.title && <p className="mt-0.5 text-[11px] text-black">{p.title}</p>}
+        {contactParts.length > 0 && (
+          <p className="mt-1 text-[10.5px] text-black">{contactParts.join("  ·  ")}</p>
         )}
-        <p className="mt-1 text-[10.5px] text-black">{contact}</p>
       </header>
 
-      {data.summary && (
+      {data.summary.trim() && (
         <>
           <SectionHeader title="Summary" />
           <p className="text-[11px] leading-snug text-black">{data.summary}</p>
@@ -95,12 +107,13 @@ export function CVPreview({ data, scale = 1 }: { data: CVData; scale?: number })
             {data.education.map((e) => (
               <div key={e.id}>
                 <EntryHeader
-                  left={e.school}
+                  left={e.institution}
                   right={e.location}
-                  subLeft={e.degree}
-                  subRight={fmt(e.range)}
+                  subLeft={[e.degree, e.major].filter(Boolean).join(", ")}
+                  subRight={formatDateRange(e.startDate, e.endDate)}
                 />
-                <Bullets items={e.details} />
+                <TextLine>{e.gpa}</TextLine>
+                <TextLine>{e.coursework}</TextLine>
               </div>
             ))}
           </div>
@@ -116,8 +129,8 @@ export function CVPreview({ data, scale = 1 }: { data: CVData; scale?: number })
                 <EntryHeader
                   left={x.company}
                   right={x.location}
-                  subLeft={x.role}
-                  subRight={fmt(x.range)}
+                  subLeft={x.title}
+                  subRight={formatDateRange(x.startDate, x.endDate, x.isCurrent)}
                 />
                 <Bullets items={x.bullets} />
               </div>
@@ -132,11 +145,7 @@ export function CVPreview({ data, scale = 1 }: { data: CVData; scale?: number })
           <div className="space-y-2">
             {data.projects.map((pr) => (
               <div key={pr.id}>
-                <EntryHeader
-                  left={pr.name}
-                  right={fmt(pr.range)}
-                  subLeft={pr.stack}
-                />
+                <EntryHeader left={pr.name} right={pr.date} subLeft={pr.techStack} />
                 <Bullets items={pr.bullets} />
               </div>
             ))}
@@ -154,7 +163,7 @@ export function CVPreview({ data, scale = 1 }: { data: CVData; scale?: number })
                   left={a.organization}
                   right={a.location}
                   subLeft={a.role}
-                  subRight={fmt(a.range)}
+                  subRight={formatDateRange(a.startDate, a.endDate)}
                 />
                 <Bullets items={a.bullets} />
               </div>
@@ -163,33 +172,37 @@ export function CVPreview({ data, scale = 1 }: { data: CVData; scale?: number })
         </>
       )}
 
-      <SectionHeader title="Additional" />
-      <div className="space-y-0.5 text-[11px] text-black">
-        {data.skills.technical.length > 0 && (
-          <p>
-            <span className="font-semibold">Technical:</span>{" "}
-            {data.skills.technical.join(", ")}
-          </p>
-        )}
-        {data.skills.languages.length > 0 && (
-          <p>
-            <span className="font-semibold">Languages:</span>{" "}
-            {data.skills.languages.join(", ")}
-          </p>
-        )}
-        {data.skills.certifications.length > 0 && (
-          <p>
-            <span className="font-semibold">Certifications:</span>{" "}
-            {data.skills.certifications.join(", ")}
-          </p>
-        )}
-        {data.skills.interests.length > 0 && (
-          <p>
-            <span className="font-semibold">Interests:</span>{" "}
-            {data.skills.interests.join(", ")}
-          </p>
-        )}
-      </div>
+      {(data.additional.technicalSkills ||
+        data.additional.languages ||
+        data.additional.certifications ||
+        data.additional.awards) && (
+        <>
+          <SectionHeader title="Additional" />
+          <div className="space-y-0.5 text-[11px] text-black">
+            {data.additional.technicalSkills && (
+              <p>
+                <span className="font-semibold">Technical:</span> {data.additional.technicalSkills}
+              </p>
+            )}
+            {data.additional.languages && (
+              <p>
+                <span className="font-semibold">Languages:</span> {data.additional.languages}
+              </p>
+            )}
+            {data.additional.certifications && (
+              <p>
+                <span className="font-semibold">Certifications:</span>{" "}
+                {data.additional.certifications}
+              </p>
+            )}
+            {data.additional.awards && (
+              <p>
+                <span className="font-semibold">Awards:</span> {data.additional.awards}
+              </p>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
-}
+});

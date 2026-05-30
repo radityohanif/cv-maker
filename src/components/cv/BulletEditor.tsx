@@ -15,16 +15,15 @@ export function BulletEditor({
   bullets: string[];
   onChange: (bullets: string[]) => void;
 }) {
-  const update = (i: number, v: string) =>
-    onChange(bullets.map((b, idx) => (idx === i ? v : b)));
+  const update = (i: number, v: string) => onChange(bullets.map((b, idx) => (idx === i ? v : b)));
   const remove = (i: number) => onChange(bullets.filter((_, idx) => idx !== i));
   const add = (v = "") => onChange([...bullets, v]);
 
   return (
     <div className="space-y-3">
       <div className="rounded-lg border border-border bg-background px-3 py-2 text-[12px] text-muted-foreground">
-        <span className="font-medium text-foreground">Formula:</span>{" "}
-        Action verb + task/project + measurable result + tools/context.
+        <span className="font-medium text-foreground">Formula:</span> Action verb + task/project +
+        measurable result + tools/context.
       </div>
 
       <div className="space-y-2">

@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, FileEdit, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TopBar } from "@/components/cv/TopBar";
 import { StepSidebar } from "@/components/cv/StepSidebar";
 import { PreviewPanel } from "@/components/cv/PreviewPanel";
 import { ChecklistCard } from "@/components/cv/ChecklistCard";
+import { CVPreview } from "@/components/cv/CVPreview";
+import { ValidationBanner } from "@/components/cv/LocalStorageStatus";
 import {
   PersonalInfoForm,
   SummaryForm,
@@ -16,7 +18,9 @@ import {
   SkillsForm,
   ReviewForm,
 } from "@/components/cv/forms/Forms";
-import { sampleCV, sectionIds, type CVData, type SectionId } from "@/data/sampleCV";
+import { useCVStorage } from "@/hooks/useCVStorage";
+import { getValidationWarnings } from "@/lib/validation";
+import { sectionIds, type SectionId } from "@/data/sampleCV";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -38,9 +42,12 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const [data, setData] = useState<CVData>(sampleCV);
+  const { data, setData, saveStatus, lastSaved, resetData } = useCVStorage();
   const [active, setActive] = useState<SectionId>("personal");
   const [mobileTab, setMobileTab] = useState<"edit" | "preview">("edit");
+  const exportRef = useRef<HTMLDivElement>(null);
+
+  const getExportElement = () => exportRef.current;
 
   const completion = useMemo<Record<SectionId, boolean>>(
     () => ({
@@ -50,7 +57,7 @@ function Index() {
       experience: data.experience.length > 0,
       projects: data.projects.length > 0,
       activities: data.activities.length > 0,
-      skills: data.skills.technical.length > 0,
+      skills: !!data.additional.technicalSkills.trim(),
       review: false,
     }),
     [data],
@@ -58,14 +65,20 @@ function Index() {
 
   const percent = Math.round(
     (Object.entries(completion).filter(([k, v]) => k !== "review" && v).length /
-      (sectionIds.length - 1)) * 100,
+      (sectionIds.length - 1)) *
+      100,
   );
+
+  const warnings = useMemo(() => getValidationWarnings(data), [data]);
 
   const checklist = [
     { label: "Personal info completed", done: completion.personal },
     { label: "At least one experience added", done: completion.experience },
     { label: "Skills added", done: completion.skills },
-    { label: "Valid email present", done: /@/.test(data.personal.email) },
+    {
+      label: "Valid email present",
+      done: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.personal.email.trim()),
+    },
     { label: "Summary written", done: completion.summary },
   ];
 
@@ -75,40 +88,61 @@ function Index() {
 
   const formProps = { data, setData };
   const formNode =
-    active === "personal" ? <PersonalInfoForm {...formProps} /> :
-    active === "summary" ? <SummaryForm {...formProps} /> :
-    active === "education" ? <EducationForm {...formProps} /> :
-    active === "experience" ? <ExperienceForm {...formProps} /> :
-    active === "projects" ? <ProjectsForm {...formProps} /> :
-    active === "activities" ? <ActivitiesForm {...formProps} /> :
-    active === "skills" ? <SkillsForm {...formProps} /> :
-    <ReviewForm data={data} checklist={checklist} onJump={() => setActive("personal")} />;
+    active === "personal" ? (
+      <PersonalInfoForm {...formProps} />
+    ) : active === "summary" ? (
+      <SummaryForm {...formProps} />
+    ) : active === "education" ? (
+      <EducationForm {...formProps} />
+    ) : active === "experience" ? (
+      <ExperienceForm {...formProps} />
+    ) : active === "projects" ? (
+      <ProjectsForm {...formProps} />
+    ) : active === "activities" ? (
+      <ActivitiesForm {...formProps} />
+    ) : active === "skills" ? (
+      <SkillsForm {...formProps} />
+    ) : (
+      <ReviewForm
+        data={data}
+        checklist={checklist}
+        warnings={warnings}
+        onJump={() => setActive("personal")}
+        getExportElement={getExportElement}
+        onReset={resetData}
+      />
+    );
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
-      <StepSidebar
-        active={active}
-        onChange={setActive}
-        completion={completion}
-        percent={percent}
-      />
+      <StepSidebar active={active} onChange={setActive} completion={completion} percent={percent} />
 
       <main className="flex min-w-0 flex-1 flex-col">
-        <TopBar />
+        <TopBar
+          saveStatus={saveStatus}
+          lastSaved={lastSaved}
+          fullName={data.personal.fullName}
+          getExportElement={getExportElement}
+          onReset={resetData}
+          onPreview={() => setMobileTab("preview")}
+        />
 
         <div className="flex items-center justify-center gap-1 border-b border-border bg-card/60 p-2 lg:hidden">
           <div className="inline-flex rounded-lg border border-border bg-background p-0.5">
             {(["edit", "preview"] as const).map((t) => (
               <button
                 key={t}
+                type="button"
                 onClick={() => setMobileTab(t)}
                 className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm capitalize transition-colors ${
-                  mobileTab === t
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground"
+                  mobileTab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground"
                 }`}
               >
-                {t === "edit" ? <FileEdit className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                {t === "edit" ? (
+                  <FileEdit className="h-3.5 w-3.5" />
+                ) : (
+                  <Eye className="h-3.5 w-3.5" />
+                )}
                 {t}
               </button>
             ))}
@@ -125,6 +159,7 @@ function Index() {
               {sectionIds.map((id, i) => (
                 <button
                   key={id}
+                  type="button"
                   onClick={() => setActive(id)}
                   className={`shrink-0 rounded-full border px-3 py-1 text-[12px] capitalize transition-colors ${
                     id === active
@@ -140,6 +175,7 @@ function Index() {
             </div>
 
             <div className="mx-auto max-w-3xl space-y-4">
+              <ValidationBanner warnings={warnings} />
               <div className="hidden md:block">
                 <ChecklistCard items={checklist} />
               </div>
@@ -165,11 +201,15 @@ function Index() {
             }`}
           >
             <div className="sticky top-0 h-screen">
-              <PreviewPanel data={data} />
+              <PreviewPanel data={data} onReset={resetData} getExportElement={getExportElement} />
             </div>
           </aside>
         </div>
       </main>
+
+      <div className="pointer-events-none fixed left-[-9999px] top-0" aria-hidden ref={exportRef}>
+        <CVPreview data={data} forExport />
+      </div>
     </div>
   );
 }

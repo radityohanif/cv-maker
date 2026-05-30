@@ -4,26 +4,36 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { SectionCard, Field, EntryCard } from "../SectionCard";
+import { SectionCard, Field, EntryCard, EmptyState, reorderList } from "../SectionCard";
 import { BulletEditor } from "../BulletEditor";
 import { ChecklistCard } from "../ChecklistCard";
+import { ExportActions } from "../ExportActions";
+import { ValidationBanner } from "../LocalStorageStatus";
 import type { CVData } from "@/data/sampleCV";
-import { sectionMeta } from "@/data/sampleCV";
+import { newId, sectionMeta } from "@/data/sampleCV";
+import type { ValidationWarning } from "@/lib/validation";
 
 type Props = { data: CVData; setData: (d: CVData) => void };
 
-const newId = () => Math.random().toString(36).slice(2, 9);
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function PersonalInfoForm({ data, setData }: Props) {
   const p = data.personal;
-  const set = (k: keyof typeof p, v: string) =>
-    setData({ ...data, personal: { ...p, [k]: v } });
+  const set = (k: keyof typeof p, v: string) => setData({ ...data, personal: { ...p, [k]: v } });
   const m = sectionMeta.personal;
+
+  const emailWarning =
+    p.email && !EMAIL_RE.test(p.email.trim()) ? "Email format looks invalid" : undefined;
+
   return (
     <SectionCard title={m.label} description={m.description} hint={m.hint}>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Full name" required>
-          <Input value={p.fullName} onChange={(e) => set("fullName", e.target.value)} />
+          <Input
+            value={p.fullName}
+            onChange={(e) => set("fullName", e.target.value)}
+            placeholder="Alex Morgan"
+          />
         </Field>
         <Field label="Title / headline" hint="Optional">
           <Input
@@ -32,21 +42,51 @@ export function PersonalInfoForm({ data, setData }: Props) {
             placeholder="Software Engineer"
           />
         </Field>
-        <Field label="Email" required>
-          <Input value={p.email} onChange={(e) => set("email", e.target.value)} />
+        <Field label="Email" required warning={emailWarning}>
+          <Input
+            type="email"
+            value={p.email}
+            onChange={(e) => set("email", e.target.value)}
+            placeholder="you@email.com"
+          />
         </Field>
-        <Field label="Phone">
-          <Input value={p.phone} onChange={(e) => set("phone", e.target.value)} />
+        <Field
+          label="Phone"
+          warning={!p.phone.trim() ? "Consider adding a phone number" : undefined}
+        >
+          <Input
+            value={p.phone}
+            onChange={(e) => set("phone", e.target.value)}
+            placeholder="+1 (555) 123-4567"
+          />
         </Field>
         <Field label="Location">
           <Input
             value={p.location}
             onChange={(e) => set("location", e.target.value)}
-            placeholder="City, Country"
+            placeholder="San Francisco, CA"
           />
         </Field>
-        <Field label="Links" hint="LinkedIn · GitHub · portfolio">
-          <Input value={p.links} onChange={(e) => set("links", e.target.value)} />
+        <Field label="LinkedIn URL">
+          <Input
+            value={p.linkedin}
+            onChange={(e) => set("linkedin", e.target.value)}
+            placeholder="linkedin.com/in/yourname"
+          />
+        </Field>
+        <Field label="Portfolio / GitHub">
+          <Input
+            value={p.portfolio}
+            onChange={(e) => set("portfolio", e.target.value)}
+            placeholder="github.com/yourname"
+          />
+        </Field>
+        <Field label="Personal website" hint="Optional">
+          <Input
+            value={p.website}
+            onChange={(e) => set("website", e.target.value)}
+            placeholder="yourname.dev"
+          />
         </Field>
       </div>
     </SectionCard>
@@ -60,6 +100,7 @@ export function SummaryForm({ data, setData }: Props) {
       <Field label="Professional summary" hint={`${data.summary.length}/400`}>
         <Textarea
           rows={5}
+          maxLength={400}
           value={data.summary}
           onChange={(e) => setData({ ...data, summary: e.target.value })}
           placeholder="Senior engineer with 6+ years shipping reliable internal tools…"
@@ -97,32 +138,118 @@ export function EducationForm({ data, setData }: Props) {
       ...data,
       education: [
         ...data.education,
-        { id: newId(), school: "", degree: "", location: "", range: { start: "", end: "" }, details: [] },
+        {
+          id: newId(),
+          institution: "",
+          degree: "",
+          major: "",
+          location: "",
+          startDate: "",
+          endDate: "",
+          gpa: "",
+          coursework: "",
+        },
       ],
     });
   const update = (id: string, patch: Partial<CVData["education"][number]>) =>
-    setData({ ...data, education: data.education.map((e) => (e.id === id ? { ...e, ...patch } : e)) });
+    setData({
+      ...data,
+      education: data.education.map((e) => (e.id === id ? { ...e, ...patch } : e)),
+    });
   const remove = (id: string) =>
-    setData({ ...data, education: data.education.filter((e) => e.id !== id) });
+    setData({
+      ...data,
+      education: data.education.filter((e) => e.id !== id),
+    });
+  const move = (id: string, direction: "up" | "down") =>
+    setData({
+      ...data,
+      education: reorderList(data.education, id, direction),
+    });
 
   return (
     <SectionCard
       title={m.label}
       description={m.description}
       hint={m.hint}
-      action={<Button size="sm" variant="outline" onClick={add}><Plus className="h-4 w-4" /> Add education</Button>}
+      action={
+        <Button size="sm" variant="outline" onClick={add}>
+          <Plus className="h-4 w-4" /> Add education
+        </Button>
+      }
     >
       <div className="space-y-3">
-        {data.education.map((e) => (
-          <EntryCard key={e.id} title={e.school || "New school"} subtitle={e.degree} onRemove={() => remove(e.id)}>
+        {data.education.length === 0 && (
+          <EmptyState message="No education entries yet. Add your most recent degree first." />
+        )}
+        {data.education.map((e, i) => (
+          <EntryCard
+            key={e.id}
+            title={e.institution || "New institution"}
+            subtitle={e.degree}
+            onRemove={() => remove(e.id)}
+            onMoveUp={() => move(e.id, "up")}
+            onMoveDown={() => move(e.id, "down")}
+            canMoveUp={i > 0}
+            canMoveDown={i < data.education.length - 1}
+          >
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="School"><Input value={e.school} onChange={(ev) => update(e.id, { school: ev.target.value })} /></Field>
-              <Field label="Degree"><Input value={e.degree} onChange={(ev) => update(e.id, { degree: ev.target.value })} /></Field>
-              <Field label="Location"><Input value={e.location} onChange={(ev) => update(e.id, { location: ev.target.value })} /></Field>
-              <div className="grid grid-cols-2 gap-2">
-                <Field label="Start"><Input value={e.range.start} onChange={(ev) => update(e.id, { range: { ...e.range, start: ev.target.value } })} placeholder="Sep 2018" /></Field>
-                <Field label="End"><Input value={e.range.end} onChange={(ev) => update(e.id, { range: { ...e.range, end: ev.target.value } })} placeholder="May 2022" /></Field>
-              </div>
+              <Field label="Institution">
+                <Input
+                  value={e.institution}
+                  onChange={(ev) => update(e.id, { institution: ev.target.value })}
+                  placeholder="University of California, Berkeley"
+                />
+              </Field>
+              <Field label="Degree / program">
+                <Input
+                  value={e.degree}
+                  onChange={(ev) => update(e.id, { degree: ev.target.value })}
+                  placeholder="B.S. in Computer Science"
+                />
+              </Field>
+              <Field label="Major / minor">
+                <Input
+                  value={e.major}
+                  onChange={(ev) => update(e.id, { major: ev.target.value })}
+                  placeholder="Minor in Business"
+                />
+              </Field>
+              <Field label="Location">
+                <Input
+                  value={e.location}
+                  onChange={(ev) => update(e.id, { location: ev.target.value })}
+                  placeholder="Berkeley, CA"
+                />
+              </Field>
+              <Field label="Start date">
+                <Input
+                  value={e.startDate}
+                  onChange={(ev) => update(e.id, { startDate: ev.target.value })}
+                  placeholder="Aug 2016"
+                />
+              </Field>
+              <Field label="End date">
+                <Input
+                  value={e.endDate}
+                  onChange={(ev) => update(e.id, { endDate: ev.target.value })}
+                  placeholder="May 2020"
+                />
+              </Field>
+              <Field label="GPA / honors" hint="Optional">
+                <Input
+                  value={e.gpa}
+                  onChange={(ev) => update(e.id, { gpa: ev.target.value })}
+                  placeholder="GPA: 3.8 / 4.0 — Dean's List"
+                />
+              </Field>
+              <Field label="Relevant coursework" hint="Optional">
+                <Input
+                  value={e.coursework}
+                  onChange={(ev) => update(e.id, { coursework: ev.target.value })}
+                  placeholder="Distributed Systems, Databases…"
+                />
+              </Field>
             </div>
           </EntryCard>
         ))}
@@ -138,38 +265,108 @@ export function ExperienceForm({ data, setData }: Props) {
       ...data,
       experience: [
         ...data.experience,
-        { id: newId(), company: "", role: "", location: "", range: { start: "", end: "", current: false }, bullets: [""] },
+        {
+          id: newId(),
+          company: "",
+          title: "",
+          location: "",
+          startDate: "",
+          endDate: "",
+          isCurrent: false,
+          bullets: [""],
+        },
       ],
     });
   const update = (id: string, patch: Partial<CVData["experience"][number]>) =>
-    setData({ ...data, experience: data.experience.map((x) => (x.id === id ? { ...x, ...patch } : x)) });
+    setData({
+      ...data,
+      experience: data.experience.map((x) => (x.id === id ? { ...x, ...patch } : x)),
+    });
   const remove = (id: string) =>
-    setData({ ...data, experience: data.experience.filter((x) => x.id !== id) });
+    setData({
+      ...data,
+      experience: data.experience.filter((x) => x.id !== id),
+    });
+  const move = (id: string, direction: "up" | "down") =>
+    setData({
+      ...data,
+      experience: reorderList(data.experience, id, direction),
+    });
 
   return (
     <SectionCard
       title={m.label}
       description={m.description}
       hint={m.hint}
-      action={<Button size="sm" variant="outline" onClick={add}><Plus className="h-4 w-4" /> Add role</Button>}
+      action={
+        <Button size="sm" variant="outline" onClick={add}>
+          <Plus className="h-4 w-4" /> Add role
+        </Button>
+      }
     >
       <div className="space-y-4">
-        {data.experience.map((x) => (
-          <EntryCard key={x.id} title={x.company || "New company"} subtitle={x.role} onRemove={() => remove(x.id)}>
+        {data.experience.length === 0 && (
+          <EmptyState message="No work experience yet. Add your most recent role first." />
+        )}
+        {data.experience.map((x, i) => (
+          <EntryCard
+            key={x.id}
+            title={x.company || "New company"}
+            subtitle={x.title}
+            onRemove={() => remove(x.id)}
+            onMoveUp={() => move(x.id, "up")}
+            onMoveDown={() => move(x.id, "down")}
+            canMoveUp={i > 0}
+            canMoveDown={i < data.experience.length - 1}
+          >
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Company"><Input value={x.company} onChange={(e) => update(x.id, { company: e.target.value })} /></Field>
-              <Field label="Role / title"><Input value={x.role} onChange={(e) => update(x.id, { role: e.target.value })} /></Field>
-              <Field label="Location"><Input value={x.location} onChange={(e) => update(x.id, { location: e.target.value })} /></Field>
+              <Field label="Company">
+                <Input
+                  value={x.company}
+                  onChange={(e) => update(x.id, { company: e.target.value })}
+                  placeholder="Northwind Technologies"
+                />
+              </Field>
+              <Field label="Job title">
+                <Input
+                  value={x.title}
+                  onChange={(e) => update(x.id, { title: e.target.value })}
+                  placeholder="Senior Software Engineer"
+                />
+              </Field>
+              <Field label="Location">
+                <Input
+                  value={x.location}
+                  onChange={(e) => update(x.id, { location: e.target.value })}
+                  placeholder="San Francisco, CA"
+                />
+              </Field>
               <div className="grid grid-cols-2 gap-2">
-                <Field label="Start"><Input value={x.range.start} onChange={(e) => update(x.id, { range: { ...x.range, start: e.target.value } })} placeholder="Jun 2022" /></Field>
-                <Field label="End"><Input value={x.range.end} disabled={x.range.current} onChange={(e) => update(x.id, { range: { ...x.range, end: e.target.value } })} placeholder="Present" /></Field>
+                <Field label="Start date">
+                  <Input
+                    value={x.startDate}
+                    onChange={(e) => update(x.id, { startDate: e.target.value })}
+                    placeholder="Jun 2022"
+                  />
+                </Field>
+                <Field label="End date">
+                  <Input
+                    value={x.endDate}
+                    disabled={x.isCurrent}
+                    onChange={(e) => update(x.id, { endDate: e.target.value })}
+                    placeholder="Present"
+                  />
+                </Field>
               </div>
             </div>
             <label className="mt-3 flex items-center gap-2 text-[12.5px] text-foreground">
               <Checkbox
-                checked={x.range.current}
+                checked={x.isCurrent}
                 onCheckedChange={(c) =>
-                  update(x.id, { range: { ...x.range, current: !!c, end: c ? "Present" : x.range.end } })
+                  update(x.id, {
+                    isCurrent: !!c,
+                    endDate: c ? "Present" : x.endDate,
+                  })
                 }
               />
               I currently work here
@@ -192,29 +389,79 @@ export function ProjectsForm({ data, setData }: Props) {
       ...data,
       projects: [
         ...data.projects,
-        { id: newId(), name: "", stack: "", range: { start: "", end: "" }, bullets: [""] },
+        {
+          id: newId(),
+          name: "",
+          techStack: "",
+          date: "",
+          bullets: [""],
+        },
       ],
     });
   const update = (id: string, patch: Partial<CVData["projects"][number]>) =>
-    setData({ ...data, projects: data.projects.map((p) => (p.id === id ? { ...p, ...patch } : p)) });
+    setData({
+      ...data,
+      projects: data.projects.map((p) => (p.id === id ? { ...p, ...patch } : p)),
+    });
   const remove = (id: string) =>
-    setData({ ...data, projects: data.projects.filter((p) => p.id !== id) });
+    setData({
+      ...data,
+      projects: data.projects.filter((p) => p.id !== id),
+    });
+  const move = (id: string, direction: "up" | "down") =>
+    setData({
+      ...data,
+      projects: reorderList(data.projects, id, direction),
+    });
 
   return (
     <SectionCard
       title={m.label}
       description={m.description}
       hint={m.hint}
-      action={<Button size="sm" variant="outline" onClick={add}><Plus className="h-4 w-4" /> Add project</Button>}
+      action={
+        <Button size="sm" variant="outline" onClick={add}>
+          <Plus className="h-4 w-4" /> Add project
+        </Button>
+      }
     >
       <div className="space-y-4">
-        {data.projects.map((p) => (
-          <EntryCard key={p.id} title={p.name || "New project"} subtitle={p.stack} onRemove={() => remove(p.id)}>
+        {data.projects.length === 0 && (
+          <EmptyState message="No projects yet. Highlight side projects or open-source work." />
+        )}
+        {data.projects.map((p, i) => (
+          <EntryCard
+            key={p.id}
+            title={p.name || "New project"}
+            subtitle={p.techStack}
+            onRemove={() => remove(p.id)}
+            onMoveUp={() => move(p.id, "up")}
+            onMoveDown={() => move(p.id, "down")}
+            canMoveUp={i > 0}
+            canMoveDown={i < data.projects.length - 1}
+          >
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Project name"><Input value={p.name} onChange={(e) => update(p.id, { name: e.target.value })} /></Field>
-              <Field label="Stack / context"><Input value={p.stack} onChange={(e) => update(p.id, { stack: e.target.value })} /></Field>
-              <Field label="Start"><Input value={p.range.start} onChange={(e) => update(p.id, { range: { ...p.range, start: e.target.value } })} /></Field>
-              <Field label="End"><Input value={p.range.end} onChange={(e) => update(p.id, { range: { ...p.range, end: e.target.value } })} /></Field>
+              <Field label="Project name">
+                <Input
+                  value={p.name}
+                  onChange={(e) => update(p.id, { name: e.target.value })}
+                  placeholder="OpenLedger"
+                />
+              </Field>
+              <Field label="Role / tech stack">
+                <Input
+                  value={p.techStack}
+                  onChange={(e) => update(p.id, { techStack: e.target.value })}
+                  placeholder="TypeScript, Postgres, Next.js"
+                />
+              </Field>
+              <Field label="Date range" hint="e.g. Jan 2024 – Present">
+                <Input
+                  value={p.date}
+                  onChange={(e) => update(p.id, { date: e.target.value })}
+                  placeholder="Jan 2024 – Present"
+                />
+              </Field>
             </div>
             <div className="mt-4 border-t border-border pt-4">
               <BulletEditor bullets={p.bullets} onChange={(bullets) => update(p.id, { bullets })} />
@@ -233,31 +480,96 @@ export function ActivitiesForm({ data, setData }: Props) {
       ...data,
       activities: [
         ...data.activities,
-        { id: newId(), organization: "", role: "", location: "", range: { start: "", end: "" }, bullets: [""] },
+        {
+          id: newId(),
+          organization: "",
+          role: "",
+          location: "",
+          startDate: "",
+          endDate: "",
+          bullets: [""],
+        },
       ],
     });
   const update = (id: string, patch: Partial<CVData["activities"][number]>) =>
-    setData({ ...data, activities: data.activities.map((a) => (a.id === id ? { ...a, ...patch } : a)) });
+    setData({
+      ...data,
+      activities: data.activities.map((a) => (a.id === id ? { ...a, ...patch } : a)),
+    });
   const remove = (id: string) =>
-    setData({ ...data, activities: data.activities.filter((a) => a.id !== id) });
+    setData({
+      ...data,
+      activities: data.activities.filter((a) => a.id !== id),
+    });
+  const move = (id: string, direction: "up" | "down") =>
+    setData({
+      ...data,
+      activities: reorderList(data.activities, id, direction),
+    });
 
   return (
     <SectionCard
       title={m.label}
       description={m.description}
       hint={m.hint}
-      action={<Button size="sm" variant="outline" onClick={add}><Plus className="h-4 w-4" /> Add activity</Button>}
+      action={
+        <Button size="sm" variant="outline" onClick={add}>
+          <Plus className="h-4 w-4" /> Add activity
+        </Button>
+      }
     >
       <div className="space-y-4">
-        {data.activities.map((a) => (
-          <EntryCard key={a.id} title={a.organization || "New activity"} subtitle={a.role} onRemove={() => remove(a.id)}>
+        {data.activities.length === 0 && (
+          <EmptyState message="No activities yet. Add volunteering, clubs, or leadership roles." />
+        )}
+        {data.activities.map((a, i) => (
+          <EntryCard
+            key={a.id}
+            title={a.organization || "New activity"}
+            subtitle={a.role}
+            onRemove={() => remove(a.id)}
+            onMoveUp={() => move(a.id, "up")}
+            onMoveDown={() => move(a.id, "down")}
+            canMoveUp={i > 0}
+            canMoveDown={i < data.activities.length - 1}
+          >
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Organization"><Input value={a.organization} onChange={(e) => update(a.id, { organization: e.target.value })} /></Field>
-              <Field label="Role"><Input value={a.role} onChange={(e) => update(a.id, { role: e.target.value })} /></Field>
-              <Field label="Location"><Input value={a.location} onChange={(e) => update(a.id, { location: e.target.value })} /></Field>
+              <Field label="Organization">
+                <Input
+                  value={a.organization}
+                  onChange={(e) => update(a.id, { organization: e.target.value })}
+                  placeholder="Code the Bay"
+                />
+              </Field>
+              <Field label="Role">
+                <Input
+                  value={a.role}
+                  onChange={(e) => update(a.id, { role: e.target.value })}
+                  placeholder="Volunteer Mentor"
+                />
+              </Field>
+              <Field label="Location">
+                <Input
+                  value={a.location}
+                  onChange={(e) => update(a.id, { location: e.target.value })}
+                  placeholder="San Francisco, CA"
+                />
+              </Field>
               <div className="grid grid-cols-2 gap-2">
-                <Field label="Start"><Input value={a.range.start} onChange={(e) => update(a.id, { range: { ...a.range, start: e.target.value } })} /></Field>
-                <Field label="End"><Input value={a.range.end} onChange={(e) => update(a.id, { range: { ...a.range, end: e.target.value } })} /></Field>
+                <Field label="Start date">
+                  <Input
+                    value={a.startDate}
+                    onChange={(e) => update(a.id, { startDate: e.target.value })}
+                    placeholder="Sep 2021"
+                  />
+                </Field>
+                <Field label="End date">
+                  <Input
+                    value={a.endDate}
+                    onChange={(e) => update(a.id, { endDate: e.target.value })}
+                    placeholder="Present"
+                  />
+                </Field>
               </div>
             </div>
             <div className="mt-4 border-t border-border pt-4">
@@ -270,67 +582,45 @@ export function ActivitiesForm({ data, setData }: Props) {
   );
 }
 
-function TagInput({
-  values,
-  onChange,
-  placeholder,
-}: {
-  values: string[];
-  onChange: (v: string[]) => void;
-  placeholder?: string;
-}) {
-  return (
-    <div className="rounded-md border border-input bg-background p-2">
-      <div className="flex flex-wrap gap-1.5">
-        {values.map((v, i) => (
-          <Badge key={`${v}-${i}`} variant="secondary" className="gap-1.5 font-normal">
-            {v}
-            <button
-              onClick={() => onChange(values.filter((_, idx) => idx !== i))}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              ×
-            </button>
-          </Badge>
-        ))}
-        <input
-          className="min-w-[120px] flex-1 bg-transparent px-1.5 py-0.5 text-sm outline-none"
-          placeholder={placeholder}
-          onKeyDown={(e) => {
-            const target = e.currentTarget;
-            if ((e.key === "Enter" || e.key === ",") && target.value.trim()) {
-              e.preventDefault();
-              onChange([...values, target.value.trim()]);
-              target.value = "";
-            } else if (e.key === "Backspace" && !target.value && values.length) {
-              onChange(values.slice(0, -1));
-            }
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-
 export function SkillsForm({ data, setData }: Props) {
   const m = sectionMeta.skills;
-  const s = data.skills;
-  const set = (k: keyof typeof s, v: string[]) =>
-    setData({ ...data, skills: { ...s, [k]: v } });
+  const a = data.additional;
+  const set = (k: keyof typeof a, v: string) => setData({ ...data, additional: { ...a, [k]: v } });
+
   return (
     <SectionCard title={m.label} description={m.description} hint={m.hint}>
       <div className="space-y-4">
-        <Field label="Technical skills" hint="Enter or comma to add">
-          <TagInput values={s.technical} onChange={(v) => set("technical", v)} placeholder="TypeScript, React, Postgres…" />
+        <Field label="Technical skills" hint="Comma-separated or one per line">
+          <Textarea
+            rows={2}
+            value={a.technicalSkills}
+            onChange={(e) => set("technicalSkills", e.target.value)}
+            placeholder="TypeScript, React, Node.js, PostgreSQL, AWS…"
+          />
         </Field>
         <Field label="Languages">
-          <TagInput values={s.languages} onChange={(v) => set("languages", v)} placeholder="English (native)" />
+          <Textarea
+            rows={2}
+            value={a.languages}
+            onChange={(e) => set("languages", e.target.value)}
+            placeholder="English (native), Spanish (professional)"
+          />
         </Field>
         <Field label="Certifications">
-          <TagInput values={s.certifications} onChange={(v) => set("certifications", v)} placeholder="AWS Solutions Architect" />
+          <Textarea
+            rows={2}
+            value={a.certifications}
+            onChange={(e) => set("certifications", e.target.value)}
+            placeholder="AWS Certified Solutions Architect — Associate"
+          />
         </Field>
-        <Field label="Interests">
-          <TagInput values={s.interests} onChange={(v) => set("interests", v)} placeholder="Hiking, open-source…" />
+        <Field label="Awards">
+          <Textarea
+            rows={2}
+            value={a.awards}
+            onChange={(e) => set("awards", e.target.value)}
+            placeholder="Dean's List, Hackathon Winner 2023"
+          />
         </Field>
       </div>
     </SectionCard>
@@ -340,26 +630,35 @@ export function SkillsForm({ data, setData }: Props) {
 export function ReviewForm({
   data,
   checklist,
+  warnings,
   onJump,
+  getExportElement,
+  onReset,
 }: {
   data: CVData;
   checklist: { label: string; done: boolean }[];
+  warnings: ValidationWarning[];
   onJump: () => void;
+  getExportElement: () => HTMLElement | null;
+  onReset: () => void;
 }) {
   const m = sectionMeta.review;
   return (
     <SectionCard title={m.label} description={m.description} hint={m.hint}>
-      <div className="grid gap-4 md:grid-cols-2">
+      <ValidationBanner warnings={warnings} />
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
         <ChecklistCard items={checklist} />
         <div className="rounded-2xl border border-border bg-card p-4 shadow-[var(--shadow-soft)]">
           <h3 className="text-sm font-semibold text-foreground">Snapshot</h3>
           <dl className="mt-3 grid grid-cols-2 gap-3 text-[12.5px]">
-            {([
-              ["Experience entries", data.experience.length],
-              ["Projects", data.projects.length],
-              ["Education", data.education.length],
-              ["Skills", data.skills.technical.length],
-            ] as const).map(([k, v]) => (
+            {(
+              [
+                ["Experience entries", data.experience.length],
+                ["Projects", data.projects.length],
+                ["Education", data.education.length],
+                ["Activities", data.activities.length],
+              ] as const
+            ).map(([k, v]) => (
               <div key={k} className="rounded-lg bg-surface px-3 py-2">
                 <dt className="text-muted-foreground">{k}</dt>
                 <dd className="text-lg font-semibold text-foreground">{v}</dd>
@@ -368,9 +667,23 @@ export function ReviewForm({
           </dl>
         </div>
       </div>
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Button onClick={onJump} variant="outline">Back to editing</Button>
-        <Button>Download PDF</Button>
+      {warnings.length > 0 && (
+        <ul className="mt-4 space-y-1.5 text-[12px] text-muted-foreground">
+          {warnings.map((w) => (
+            <li key={w.id}>· {w.message}</li>
+          ))}
+        </ul>
+      )}
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <Button onClick={onJump} variant="outline">
+          Back to editing
+        </Button>
+        <ExportActions
+          getExportElement={getExportElement}
+          fullName={data.personal.fullName}
+          onReset={onReset}
+          showReset={false}
+        />
       </div>
     </SectionCard>
   );

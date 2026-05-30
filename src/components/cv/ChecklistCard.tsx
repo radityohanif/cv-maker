@@ -1,10 +1,6 @@
 import { Check, Circle } from "lucide-react";
 
-export function ChecklistCard({
-  items,
-}: {
-  items: { label: string; done: boolean }[];
-}) {
+export function ChecklistCard({ items }: { items: { label: string; done: boolean }[] }) {
   const done = items.filter((i) => i.done).length;
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-[var(--shadow-soft)]">
