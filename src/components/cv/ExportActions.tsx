@@ -69,8 +69,8 @@ export function ExportActions({
             <AlertDialogHeader>
               <AlertDialogTitle>Clear all CV data?</AlertDialogTitle>
               <AlertDialogDescription>
-                This removes your saved draft from this browser and restores the sample CV. This
-                action cannot be undone.
+                This clears all fields and removes your saved draft from this browser. This action
+                cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -78,7 +78,7 @@ export function ExportActions({
               <AlertDialogAction
                 onClick={() => {
                   onReset();
-                  toast.success("CV reset to sample data");
+                  toast.success("CV cleared");
                 }}
               >
                 Clear data

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { loadCVData, sampleCV, STORAGE_KEY, type CVData } from "@/data/sampleCV";
+import { emptyCV, loadCVData, STORAGE_KEY, type CVData } from "@/data/sampleCV";
 
 const DEBOUNCE_MS = 500;
 
@@ -38,10 +38,15 @@ export function useCVStorage() {
   }, []);
 
   const resetData = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
-    setDataState(sampleCV);
-    setSaveStatus("saved");
-    setLastSaved(new Date());
+    setDataState(emptyCV);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(emptyCV));
+      setSaveStatus("saved");
+      setLastSaved(new Date());
+    } catch {
+      localStorage.removeItem(STORAGE_KEY);
+      setSaveStatus("idle");
+    }
   }, []);
 
   return { data, setData, saveStatus, lastSaved, resetData };

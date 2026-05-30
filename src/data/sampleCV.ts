@@ -67,6 +67,30 @@ export interface CVData {
 
 export const STORAGE_KEY = "ats_cv_builder_data";
 
+export const emptyCV: CVData = {
+  personal: {
+    fullName: "",
+    title: "",
+    location: "",
+    phone: "",
+    email: "",
+    linkedin: "",
+    portfolio: "",
+    website: "",
+  },
+  summary: "",
+  education: [],
+  experience: [],
+  projects: [],
+  activities: [],
+  additional: {
+    technicalSkills: "",
+    languages: "",
+    certifications: "",
+    awards: "",
+  },
+};
+
 export const sampleCV: CVData = {
   personal: {
     fullName: "Alex Morgan",
